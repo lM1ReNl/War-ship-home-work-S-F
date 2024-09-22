@@ -1,0 +1,142 @@
+import random
+
+class Ship:
+    def __init__(self, size, orientation="horizontal"):
+        self.size = size
+        self.orientation = orientation
+        self.hits = 0
+        self.sunk = False
+
+    def is_sunk(self):
+        return self.hits == self.size
+
+    def get_coordinates(self, start_x, start_y):
+        coordinates = []
+        if self.orientation == "horizontal":
+            for i in range(self.size):
+                coordinates.append((start_x + i, start_y))
+        else:
+            for i in range(self.size):
+                coordinates.append((start_x, start_y + i))
+        return coordinates
+
+class Board:
+    def __init__(self, size=10):
+        self.size = size
+        self.board = [["O" for _ in range(self.size)] for _ in range(self.size)]
+        self.ships = []
+
+    def place_ship(self, ship, start_x, start_y):
+        if self.is_valid_placement(ship, start_x, start_y):
+            coordinates = ship.get_coordinates(start_x, start_y)
+            for x, y in coordinates:
+                self.board[y][x] = "S"
+            self.ships.append(ship)
+            return True
+        else:
+            return False
+
+    def is_valid_placement(self, ship, start_x, start_y):
+        coordinates = ship.get_coordinates(start_x, start_y)
+        for x, y in coordinates:
+            if x < 0 or x >= self.size or y < 0 or y >= self.size:
+                return False
+            if self.board[y][x] != "O":
+                return False
+        return True
+
+    def print_board(self):
+        for row in self.board:
+            print(" ".join(row))
+
+    def make_move(self, x, y):
+        if x < 0 or x >= self.size or y < 0 or y >= self.size:
+            return False, "Invalid coordinates."
+        if self.board[y][x] == "O":
+            self.board[y][x] = "-"
+            return True, "Miss."
+        elif self.board[y][x] == "S":
+            self.board[y][x] = "X"
+            for ship in self.ships:
+                if (x, y) in ship.get_coordinates(0, 0):
+                    ship.hits += 1
+                    if ship.is_sunk():
+                        print("You sunk a ship!")
+                    return True, "Hit!"
+            return True, "Hit!"
+        else:
+            return False, "Already attacked."
+
+    def check_for_win(self):
+        for ship in self.ships:
+            if not ship.is_sunk():
+                return False
+        return True
+
+    def get_random_coordinates(self):
+        return random.randint(0, self.size - 1), random.randint(0, self.size - 1)
+
+class Game:
+    def __init__(self, board_size=10):
+        self.player_board = Board(board_size)
+        self.bot_board = Board(board_size)
+        self.ship_sizes = [5, 4, 3, 3, 2]
+        self.player_turn = True
+
+    def place_ships(self, board):
+        for size in self.ship_sizes:
+            placed = False
+            while not placed:
+                orientation = random.choice(["horizontal", "vertical"])
+                start_x, start_y = board.get_random_coordinates()
+                ship = Ship(size, orientation)
+                if board.place_ship(ship, start_x, start_y):
+                    placed = True
+
+    def start(self):
+        print("Welcome to Battleship!")
+        self.place_ships(self.player_board)
+        self.place_ships(self.bot_board)
+
+        while True:
+            if self.player_turn:
+                self.player_move()
+            else:
+                self.bot_move()
+
+            if self.player_board.check_for_win():
+                print("Bot Wins!")
+                break
+            if self.bot_board.check_for_win():
+                print("You Win!")
+                break
+
+    def player_move(self):
+        self.player_board.print_board()
+        print("\nYour turn!")
+        while True:
+            try:
+                x = int(input("Enter X coordinate (0-9): "))
+                y = int(input("Enter Y coordinate (0-9): "))
+                success, result = self.bot_board.make_move(x, y)
+                if success:
+                    print(result)
+                    break
+                else:
+                    print(result)
+            except ValueError:
+                print("Invalid input. Please enter numbers between 0 and 9.")
+        self.player_turn = False
+
+    def bot_move(self):
+        print("\nBot's turn!")
+        while True:
+            x, y = self.player_board.get_random_coordinates()
+            success, result = self.player_board.make_move(x, y)
+            if success:
+                print(f"Bot attacked {x}, {y}: {result}")
+                break
+        self.player_turn = True
+
+game = Game()
+game.start()
